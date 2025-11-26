@@ -1,0 +1,14 @@
+{
+  "name": "Test Pet",
+  "battery": 50,
+  "charging": true,
+  "position": null,
+  "tracker_settings": {
+    "generation": "1.0",
+    "features": {
+      "flash_light": false,
+      "sleep_mode": false,
+      "live_tracking": false
+    }
+  }
+}

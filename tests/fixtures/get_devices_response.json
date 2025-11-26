@@ -1,0 +1,10 @@
+[
+  {
+    "serialnumber": "ABC123456",
+    "token": "device_token_1"
+  },
+  {
+    "serialnumber": "DEF789012",
+    "token": "device_token_2"
+  }
+]

@@ -1,0 +1,35 @@
+---
+name: CI
+
+"on":
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-|${{ matrix.python-version }}|${{ hashFiles('.pre-commit-config.yaml') }}
+      - name: Lint
+        run: |
+          uv run pre-commit run --all-files
+      - name: Lint GitHub Actions
+        uses: eifinger/actionlint-action@v1
+      - name: Test
+        run: |
+          uv run pytest tests

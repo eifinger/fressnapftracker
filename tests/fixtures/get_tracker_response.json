@@ -1,0 +1,30 @@
+{
+  "name": "Test Pet",
+  "battery": 85,
+  "charging": false,
+  "position": {
+    "lat": 52.520008,
+    "lng": 13.404954,
+    "accuracy": 10,
+    "timestamp": "2024-01-15T12:00:00Z"
+  },
+  "tracker_settings": {
+    "generation": "2.1",
+    "features": {
+      "flash_light": true,
+      "sleep_mode": true,
+      "live_tracking": false
+    }
+  },
+  "led_brightness": {
+    "value": 50,
+    "status": "ok"
+  },
+  "deep_sleep": {
+    "value": false,
+    "status": "ok"
+  },
+  "led_activatable": {
+    "overall": true
+  }
+}
