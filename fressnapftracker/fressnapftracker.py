@@ -13,6 +13,7 @@ from .exceptions import (
     FressnapfTrackerInvalidDeviceTokenError,
     FressnapfTrackerInvalidSerialNumberError,
     FressnapfTrackerInvalidTokenError,
+    FressnapfTrackerInvalidPhoneNumberError,
 )
 from .models import (
     Device,
@@ -166,12 +167,11 @@ class AuthClient(_BaseClient):
 
         result = await self._request("POST", url, headers, json_data=body)
 
-        if "error" in result:
-            error = result["error"]
-            error_description = result.get("error_description", error)
-            if "Bad credentials" in error_description:
-                raise FressnapfTrackerAuthenticationError(error)
-            raise FressnapfTrackerError(error)
+        if (errors := result.get("errors")) is not None:
+            if errors.get("phone", [{}])[0].get("error") == "invalid":
+                raise FressnapfTrackerInvalidPhoneNumberError()
+            else:
+                raise FressnapfTrackerError(result)
 
         return SmsCodeResponse.model_validate(result)
 

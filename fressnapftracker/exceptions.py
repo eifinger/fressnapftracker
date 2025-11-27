@@ -13,6 +13,10 @@ class FressnapfTrackerAuthenticationError(FressnapfTrackerError):
     """Fressnapf Tracker authentication exception."""
 
 
+class FressnapfTrackerInvalidPhoneNumberError(FressnapfTrackerAuthenticationError):
+    """Fressnapf Tracker invalid phone number exception."""
+
+
 class FressnapfTrackerInvalidTokenError(FressnapfTrackerAuthenticationError):
     """Fressnapf Tracker invalid token exception."""
 
