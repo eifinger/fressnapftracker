@@ -14,6 +14,7 @@ from fressnapftracker import (
     FressnapfTrackerConnectionError,
     FressnapfTrackerError,
     FressnapfTrackerInvalidDeviceTokenError,
+    FressnapfTrackerInvalidPhoneNumberError,
     FressnapfTrackerInvalidSerialNumberError,
     FressnapfTrackerInvalidTokenError,
 )
@@ -244,6 +245,20 @@ class TestAuthentication:
             response = await auth.request_sms_code("+49123456789")
 
         assert response.id == 12345
+
+    @respx.mock
+    async def test_request_sms_code_invalid_phone_number(self):
+        """Test requesting SMS code with invalid phone number."""
+        respx.post(f"{AUTH_BASE_URL}/users/request_sms_code").mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("error_invalid_phone_number.json")),
+            )
+        )
+
+        async with AuthClient() as auth:
+            with pytest.raises(FressnapfTrackerInvalidPhoneNumberError):
+                await auth.request_sms_code("invalid_phone")
 
     @respx.mock
     async def test_verify_phone_number(self):
