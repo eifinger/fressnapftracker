@@ -1,23 +1,24 @@
 ---
 name: Release Drafter
 
-"on":
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
   push:
     branches:
       - main
-  pull_request:
-    types: [opened, reopened, synchronize]
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   update_release_draft:
+    name: ✏️ Draft release
+    runs-on: ubuntu-slim
     permissions:
       contents: write
-      pull-requests: write
-    runs-on: ubuntu-latest
+      pull-requests: read
     steps:
-      - uses: release-drafter/release-drafter@v6
+      - name: 🚀 Run Release Drafter
+        uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
