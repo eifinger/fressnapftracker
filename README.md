@@ -5,7 +5,6 @@ Asynchronous Python client for the Fressnapf Tracker GPS API
 [![GitHub Actions](https://github.com/eifinger/fressnapftracker/workflows/CI/badge.svg)](https://github.com/eifinger/fressnapftracker/actions?workflow=CI)
 [![PyPi](https://img.shields.io/pypi/v/fressnapftracker.svg)](https://pypi.python.org/pypi/fressnapftracker)
 [![License](https://img.shields.io/pypi/l/fressnapftracker.svg)](https://github.com/eifinger/fressnapftracker/blob/main/LICENSE)
-[![codecov](https://codecov.io/gh/eifinger/fressnapftracker/branch/main/graph/badge.svg)](https://codecov.io/gh/eifinger/fressnapftracker)
 
 ## Installation
 

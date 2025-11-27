@@ -2,7 +2,7 @@
 name = "fressnapftracker"
 version = "1.0+versionplaceholder.1"
 description = "Asynchronous Python client for the Fressnapf Tracker GPS API"
-license = "MIT"
+license = "Apache-2.0"
 authors = [
     { name = "Kevin Stillhammer", email = "kevin.stillhammer@gmail.com" }
 ]
@@ -22,7 +22,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
     "httpx>=0.28.0",
