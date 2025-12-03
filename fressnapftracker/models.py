@@ -117,6 +117,13 @@ class Tracker(BaseModel):
         return None
 
     @property
+    def energy_saving_value(self) -> int | None:
+        """Get energy saving value."""
+        if self.energy_saving:
+            return self.energy_saving.value
+        return None
+
+    @property
     def supports_flash_light(self) -> bool:
         """Check if tracker supports flash light."""
         return self.tracker_settings.features.flash_light

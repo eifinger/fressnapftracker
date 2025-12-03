@@ -247,6 +247,48 @@ class TestSetDeepSleep:
             await api.set_deep_sleep(False)
 
 
+class TestSetEnergySaving:
+    """Tests for set_energy_saving method."""
+
+    @respx.mock
+    async def test_set_energy_saving_on(self, serial_number: str, device_token: str):
+        """Test enabling energy saving."""
+        respx.patch(
+            f"{API_BASE_URL}/devices/{serial_number}/energy_saving/enable",
+            params={"devicetoken": device_token},
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("put_success_response.json")),
+            )
+        )
+
+        async with ApiClient(
+            serial_number=serial_number,
+            device_token=device_token,
+        ) as api:
+            await api.set_energy_saving(True)
+
+    @respx.mock
+    async def test_set_energy_saving_off(self, serial_number: str, device_token: str):
+        """Test disabling energy saving."""
+        respx.patch(
+            f"{API_BASE_URL}/devices/{serial_number}/energy_saving/disable",
+            params={"devicetoken": device_token},
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("put_success_response.json")),
+            )
+        )
+
+        async with ApiClient(
+            serial_number=serial_number,
+            device_token=device_token,
+        ) as api:
+            await api.set_energy_saving(False)
+
+
 class TestAuthentication:
     """Tests for authentication methods."""
 
