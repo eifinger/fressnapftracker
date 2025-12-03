@@ -363,3 +363,13 @@ class ApiClient(_BaseClient):
 
         """
         await self._device_request("PUT", "/change_deep_sleep", {"value": int(enabled)})
+
+    async def set_energy_saving(self, enabled: bool) -> None:
+        """Set the energy saving mode of the tracker.
+
+        Args:
+            enabled: True to enable energy saving, False to disable.
+
+        """
+        state = "enable" if enabled else "disable"
+        await self._device_request("PATCH", f"/energy_saving/{state}")
