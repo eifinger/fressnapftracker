@@ -57,12 +57,31 @@ class TestGetTracker:
         assert tracker.position.lat == 52.520008
         assert tracker.position.lng == 13.404954
         assert tracker.position.accuracy == 10
+        assert tracker.position.created_at == "2025-12-02T20:25:31.000+01:00"
+        assert tracker.position.sampled_at == "2025-12-02T20:25:30.000+01:00"
         assert tracker.tracker_settings.generation == "2.1"
+        assert tracker.tracker_settings.type == "dog"
         assert tracker.supports_flash_light is True
         assert tracker.supports_sleep_mode is True
+        assert tracker.supports_energy_saving_mode is False
+        assert tracker.supports_live_tracking is False
         assert tracker.led_brightness_value == 50
-        assert tracker.deep_sleep_value is False
+        assert tracker.deep_sleep_value == 0
         assert tracker.led_activatable_overall is True
+        assert tracker.led_activatable is not None
+        assert tracker.led_activatable.has_led is True
+        assert tracker.led_activatable.seen_recently is False
+        assert tracker.led_activatable.nonempty_battery is True
+        assert tracker.led_activatable.not_charging is True
+        assert tracker.energy_saving is not None
+        assert tracker.energy_saving.value == 0
+        assert tracker.servicebooking is not None
+        assert tracker.servicebooking.has_current_servicebooking is True
+        assert tracker.servicebooking.days_until_servicebooking_ends == 184
+        assert tracker.inside_geofence is False
+        assert tracker.serialnumber == "231511297"
+        assert tracker.icon is not None
+        assert tracker.last_seen == "about 2 hours"
 
     @respx.mock
     async def test_get_tracker_minimal(self, serial_number: str, device_token: str):
