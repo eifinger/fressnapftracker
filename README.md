@@ -114,7 +114,7 @@ Client for handling authentication with the Fressnapf Tracker API.
 #### Methods
 
 - `request_sms_code(phone_number: str, locale: str = "en")` -> `SmsCodeResponse`: Request SMS verification code
-- `verify_phone_number(user_id: int, sms_code: int)` -> `PhoneVerificationResponse`: Verify phone with code received via SMS
+- `verify_phone_number(user_id: int, sms_code: str)` -> `PhoneVerificationResponse`: Verify phone with code received via SMS
 - `get_devices(user_id: int, user_access_token: str)` -> `list[Device]`: Get list of devices
 
 ### ApiClient

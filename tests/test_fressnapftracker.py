@@ -332,7 +332,7 @@ class TestAuthentication:
         )
 
         async with AuthClient() as auth:
-            response = await auth.verify_phone_number(12345, 123456)
+            response = await auth.verify_phone_number(12345, "123456")
 
         assert response.user_token.access_token == "test_access_token_12345"
         assert response.user_token.refresh_token == "test_refresh_token_12345"
@@ -349,7 +349,7 @@ class TestAuthentication:
 
         async with AuthClient() as auth:
             with pytest.raises(FressnapfTrackerInvalidTokenError):
-                await auth.verify_phone_number(12345, 000000)
+                await auth.verify_phone_number(12345, "000000")
 
     @respx.mock
     async def test_get_devices(self):

@@ -175,7 +175,7 @@ class AuthClient(_BaseClient):
 
         return SmsCodeResponse.model_validate(result)
 
-    async def verify_phone_number(self, user_id: int, sms_code: int) -> PhoneVerificationResponse:
+    async def verify_phone_number(self, user_id: int, sms_code: str) -> PhoneVerificationResponse:
         """Verify phone number with SMS code.
 
         Args:
