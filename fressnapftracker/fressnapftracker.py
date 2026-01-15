@@ -1,5 +1,7 @@
 """A module to query the Fressnapf Tracker GPS API."""
 
+from pydantic import ValidationError
+
 import asyncio
 from importlib import metadata
 from typing import Any, Self
@@ -14,6 +16,7 @@ from .exceptions import (
     FressnapfTrackerInvalidSerialNumberError,
     FressnapfTrackerInvalidTokenError,
     FressnapfTrackerInvalidPhoneNumberError,
+    FressnapfTrackerInvalidTrackerResponseError,
 )
 from .models import (
     Device,
@@ -339,7 +342,10 @@ class ApiClient(_BaseClient):
 
         """
         result = await self._device_request("GET", "")
-        return Tracker.model_validate(result)
+        try:
+            return Tracker.model_validate(result)
+        except ValidationError as exception:
+            raise FressnapfTrackerInvalidTrackerResponseError("Failed to parse tracker data") from exception
 
     async def set_led_brightness(self, brightness: int) -> None:
         """Set the LED brightness of the tracker.

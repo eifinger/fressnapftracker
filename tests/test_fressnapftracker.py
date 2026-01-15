@@ -17,6 +17,7 @@ from fressnapftracker import (
     FressnapfTrackerInvalidPhoneNumberError,
     FressnapfTrackerInvalidSerialNumberError,
     FressnapfTrackerInvalidTokenError,
+    FressnapfTrackerInvalidTrackerResponseError,
 )
 from fressnapftracker.fressnapftracker import API_BASE_URL, AUTH_BASE_URL
 
@@ -169,6 +170,26 @@ class TestGetTracker:
             device_token=device_token,
         ) as api:
             with pytest.raises(FressnapfTrackerInvalidSerialNumberError):
+                await api.get_tracker()
+
+    @respx.mock
+    async def test_get_tracker_invalid_response(self, serial_number: str, device_token: str):
+        """Test get_tracker raises error on invalid tracker response."""
+        respx.get(
+            f"{API_BASE_URL}/devices/{serial_number}",
+            params={"devicetoken": device_token},
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("error_invalid_get_tracker_response.json")),
+            )
+        )
+
+        async with ApiClient(
+            serial_number=serial_number,
+            device_token=device_token,
+        ) as api:
+            with pytest.raises(FressnapfTrackerInvalidTrackerResponseError):
                 await api.get_tracker()
 
 
