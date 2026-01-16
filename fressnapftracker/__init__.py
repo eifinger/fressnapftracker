@@ -8,6 +8,7 @@ from .exceptions import (
     FressnapfTrackerInvalidTokenError,
     FressnapfTrackerInvalidDeviceTokenError,
     FressnapfTrackerInvalidSerialNumberError,
+    FressnapfTrackerInvalidTrackerResponseError,
 )
 from .fressnapftracker import ApiClient, AuthClient
 from .models import (
@@ -36,6 +37,7 @@ __all__ = [
     "FressnapfTrackerInvalidTokenError",
     "FressnapfTrackerInvalidDeviceTokenError",
     "FressnapfTrackerInvalidSerialNumberError",
+    "FressnapfTrackerInvalidTrackerResponseError",
     "Device",
     "Position",
     "TrackerFeatures",

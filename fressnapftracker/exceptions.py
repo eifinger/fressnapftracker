@@ -27,3 +27,7 @@ class FressnapfTrackerInvalidDeviceTokenError(FressnapfTrackerAuthenticationErro
 
 class FressnapfTrackerInvalidSerialNumberError(FressnapfTrackerError):
     """Fressnapf Tracker invalid serial number exception."""
+
+
+class FressnapfTrackerInvalidTrackerResponseError(FressnapfTrackerError):
+    """Exception for invalid tracker response."""
