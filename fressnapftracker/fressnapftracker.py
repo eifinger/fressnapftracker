@@ -3,6 +3,7 @@
 from pydantic import ValidationError
 
 import asyncio
+import logging
 from importlib import metadata
 from typing import Any, Self
 
@@ -34,6 +35,8 @@ AUTH_BASE_URL = f"https://{AUTH_HOST}/api/app/v1"
 CLOUD_AUTH_TOKEN = "FgvX_UJ7!BQRLU((1WhwFoOp"  # noqa: S105
 
 LIB_VERSION = metadata.version(__package__ or "fressnapftracker")
+
+log = logging.getLogger(__name__)
 
 
 class _BaseClient:
@@ -117,7 +120,10 @@ class _BaseClient:
         if "application/json" not in content_type:
             raise FressnapfTrackerError(f"Unexpected response type: {content_type}")
 
-        return response.json()
+        result = response.json()
+        log.debug("Response from %s: [%s] - %s", url, response.status_code, result)
+
+        return result
 
     async def close(self) -> None:
         """Close open client session."""
