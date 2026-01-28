@@ -51,7 +51,7 @@ fressnapftracker/
 - **respx**: HTTP mocking for httpx
 - **ruff**: Linting and code formatting
 - **mypy**: Static type checking
-- **pre-commit**: Git hooks for code quality
+- **prek**: Fast git hooks for code quality (pre-commit replacement)
 - **codespell**: Spell checking
 - **yamllint**: YAML file linting
 
@@ -78,8 +78,8 @@ uv run ruff format --check .
 # Format code
 uv run ruff format .
 
-# Run all pre-commit hooks
-uv run pre-commit run --all-files
+# Run all prek hooks
+uv run prek run --all-files
 ```
 
 ## Coding Guidelines
@@ -104,14 +104,14 @@ uv run pre-commit run --all-files
 Before submitting any changes, **always run**:
 
 ```bash
-uv run pre-commit run --all-files
+uv run prek run --all-files
 ```
 
 This runs:
 - Trailing whitespace removal
 - End of file fixing
 - YAML validation
-- JSON formatting
+- JSON validation
 - Ruff linting and formatting
 - Codespell spell checking
 - yamllint
