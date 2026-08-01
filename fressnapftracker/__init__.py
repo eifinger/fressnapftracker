@@ -12,7 +12,10 @@ from .exceptions import (
 )
 from .fressnapftracker import ApiClient, AuthClient
 from .models import (
+    AdditionalParameters,
     Device,
+    MagicLinkResponse,
+    MagicLinkUserToken,
     Position,
     TrackerFeatures,
     TrackerSettings,
@@ -22,6 +25,7 @@ from .models import (
     LedActivatable,
     ServiceBooking,
     Tracker,
+    TrackerUser,
     UserToken,
     PhoneVerificationResponse,
     SmsCodeResponse,
@@ -38,7 +42,10 @@ __all__ = [
     "FressnapfTrackerInvalidDeviceTokenError",
     "FressnapfTrackerInvalidSerialNumberError",
     "FressnapfTrackerInvalidTrackerResponseError",
+    "AdditionalParameters",
     "Device",
+    "MagicLinkResponse",
+    "MagicLinkUserToken",
     "Position",
     "TrackerFeatures",
     "TrackerSettings",
@@ -48,6 +55,7 @@ __all__ = [
     "LedActivatable",
     "ServiceBooking",
     "Tracker",
+    "TrackerUser",
     "UserToken",
     "PhoneVerificationResponse",
     "SmsCodeResponse",

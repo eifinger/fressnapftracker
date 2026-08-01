@@ -14,9 +14,9 @@ uv add fressnapftracker
 
 ## Usage
 
-### Authentication Flow
+### Email Authentication Flow
 
-If you don't have credentials yet, you can use the authentication flow:
+Use your Fressnapf account credentials to request a sign-in link by email:
 
 ```python
 import asyncio
@@ -25,21 +25,21 @@ from fressnapftracker import AuthClient
 
 
 async def main() -> None:
-    """Show example of authentication flow."""
+    """Show the email authentication flow."""
     async with AuthClient() as auth:
-        # Step 1: Request SMS code
-        # Phone number should be in E.164 format (e.g., +49123456789)
-        sms_response = await auth.request_sms_code("+49123456789")
-        user_id = sms_response.id
-        print(f"User ID: {user_id}")
+        # Step 1: Request the email sign-in link
+        response = await auth.request_magic_link("<EMAIL>", "<PASSWORD>")
+        user_id = response.user.id
+        access_token = response.user_token.access_token
+        customer_id = response.user.additional_parameters.fressnapf_id
 
-        # Step 2: Verify with SMS code (you'll receive this via SMS)
-        sms_code = input("Enter SMS code: ")
-        verify_response = await auth.verify_phone_number(user_id, sms_code)
-        access_token = verify_response.user_token.access_token
-        print(f"Access token: {access_token}")
+        # Step 2: Open the link in the email, then check its status
+        input("Open the sign-in link, then press Enter: ")
+        if not await auth.check_magic_link_was_clicked(access_token):
+            raise RuntimeError("The sign-in link has not been opened")
 
-        # Step 3: Get list of devices
+        # Step 3: Complete authentication and get the tracker devices
+        await auth.complete_magic_link(user_id, access_token, customer_id)
         devices = await auth.get_devices(user_id, access_token)
         for device in devices:
             print(f"Device: {device.serialnumber} - Token: {device.token}")
@@ -47,6 +47,20 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+```
+
+`check_magic_link_was_clicked()` performs one status request. Applications that poll should choose an appropriate interval and timeout.
+
+### Legacy SMS Authentication Flow
+
+Phone-number authentication remains available for existing accounts:
+
+```python
+async with AuthClient() as auth:
+    sms_response = await auth.request_sms_code("+49123456789")
+    sms_code = input("Enter SMS code: ")
+    response = await auth.verify_phone_number(sms_response.id, sms_code)
+    devices = await auth.get_devices(sms_response.id, response.user_token.access_token)
 ```
 
 ### Getting Tracker Data
@@ -113,9 +127,12 @@ Client for handling authentication with the Fressnapf Tracker API.
 
 #### Methods
 
-- `request_sms_code(phone_number: str, locale: str = "en")` -> `SmsCodeResponse`: Request SMS verification code
-- `verify_phone_number(user_id: int, sms_code: str)` -> `PhoneVerificationResponse`: Verify phone with code received via SMS
-- `get_devices(user_id: int, user_access_token: str)` -> `list[Device]`: Get list of devices
+- `request_magic_link(email: str, password: str, locale: str = "en")` -> `MagicLinkResponse`: Request an email sign-in link
+- `check_magic_link_was_clicked(user_access_token: str)` -> `bool`: Check once whether the email sign-in link has been opened
+- `complete_magic_link(user_id: int, user_access_token: str, customer_id: str)` -> `TrackerUser`: Complete email authentication
+- `request_sms_code(phone_number: str, locale: str = "en")` -> `SmsCodeResponse`: Request an SMS verification code
+- `verify_phone_number(user_id: int, sms_code: str)` -> `PhoneVerificationResponse`: Verify a phone number with its SMS code
+- `get_devices(user_id: int, user_access_token: str)` -> `list[Device]`: Get the authenticated user's devices
 
 ### ApiClient
 
@@ -147,12 +164,21 @@ Client for interacting with the Fressnapf Tracker device API.
 - `led_brightness`: LED brightness settings
 - `deep_sleep`: Deep sleep settings
 
+#### MagicLinkResponse
+
+- `user`: Authenticated user information, including the user and Fressnapf customer IDs
+- `user_token`: Access token and current magic-link confirmation status
+
+#### TrackerUser
+
+- `id`: Tracker user ID
+- `email`: Fressnapf account email address
+- `additional_parameters`: Fressnapf-specific account settings
+
 #### Device
 
 - `serialnumber`: Device serial number
-- `name`: Device name
-- `device_token`: Device token for API calls
-- `auth_token`: Auth token for API calls
+- `token`: Device token for API calls
 
 ## Exceptions
 

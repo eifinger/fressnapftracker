@@ -2,6 +2,7 @@
 
 import json
 import os
+from urllib.parse import parse_qsl
 
 import httpx
 import pytest
@@ -19,7 +20,15 @@ from fressnapftracker import (
     FressnapfTrackerInvalidTokenError,
     FressnapfTrackerInvalidTrackerResponseError,
 )
-from fressnapftracker.fressnapftracker import API_BASE_URL, AUTH_BASE_URL
+from fressnapftracker.fressnapftracker import (
+    API_BASE_URL,
+    AUTH_BASE_URL,
+    CLOUD_AUTH_TOKEN,
+    LIB_VERSION,
+    SHOP_API_BASE_URL,
+    SHOP_CLIENT_ID,
+    SHOP_CLIENT_SECRET,
+)
 
 
 def load_fixture(filename: str) -> str:
@@ -314,9 +323,205 @@ class TestAuthentication:
     """Tests for authentication methods."""
 
     @respx.mock
+    async def test_request_magic_link(self):
+        """Test requesting an email authentication magic link."""
+        oauth_route = respx.post(f"{SHOP_API_BASE_URL}/authorizationserver/oauth/token").mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("oauth_token_response.json")),
+            )
+        )
+        customer_route = respx.get(f"{SHOP_API_BASE_URL}/rest/v2/FressnapfDE/users/test%40example.com").mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("customer_response.json")),
+            )
+        )
+        magic_link_route = respx.post(f"{AUTH_BASE_URL}/magic_link_auth").mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("magic_link_response.json")),
+            )
+        )
+
+        async with AuthClient() as auth:
+            response = await auth.request_magic_link("test@example.com", "password")
+
+        oauth_request = oauth_route.calls.last.request
+        assert oauth_request.headers["Content-Type"] == "application/x-www-form-urlencoded;charset=UTF-8"
+        assert dict(parse_qsl(oauth_request.content.decode())) == {
+            "grant_type": "password",
+            "username": "test@example.com",
+            "password": "password",
+            "client_id": SHOP_CLIENT_ID,
+            "client_secret": SHOP_CLIENT_SECRET,
+        }
+        assert customer_route.calls.last.request.headers["Authorization"] == "Bearer shop_access_token"
+
+        magic_link_request = magic_link_route.calls.last.request
+        assert magic_link_request.headers["Authorization"] == f"Token token={CLOUD_AUTH_TOKEN}"
+        assert json.loads(magic_link_request.content) == {
+            "user": {
+                "email": "test@example.com",
+                "locale": "en",
+                "tracker_service": "fressnapf",
+                "user_token": {
+                    "push_token": "",
+                    "app_version": "2.9.5_2",
+                    "app_platform": "android",
+                    "platform_version": 34,
+                    "phone_name": f"fressnapftracker {LIB_VERSION}",
+                },
+                "additional_parameters": {
+                    "acceptedPrivacyPolicy": True,
+                    "region": "DE",
+                    "fressnapfId": "customer-123",
+                    "acceptedNewsletter": False,
+                    "onlineShopRatingHasBeenShowed": False,
+                    "onlineShopRatingPopupLastShowedDate": None,
+                },
+            }
+        }
+        assert response.user.id == 12345
+        assert response.user.email == "test@example.com"
+        assert response.user.additional_parameters.fressnapf_id == "customer-123"
+        assert response.user_token.access_token == "tracker_access_token"
+        assert response.user_token.token_valid is False
+
+    @respx.mock
+    async def test_request_magic_link_invalid_credentials(self):
+        """Test requesting a magic link with invalid shop credentials."""
+        respx.post(f"{SHOP_API_BASE_URL}/authorizationserver/oauth/token").mock(
+            return_value=httpx.Response(
+                400,
+                json=json.loads(load_fixture("error_invalid_credentials.json")),
+            )
+        )
+
+        async with AuthClient() as auth:
+            with pytest.raises(FressnapfTrackerAuthenticationError, match="Bad credentials"):
+                await auth.request_magic_link("test@example.com", "wrong-password")
+
+    @respx.mock
+    async def test_request_magic_link_invalid_response(self):
+        """Test requesting a magic link with an invalid tracker API response."""
+        respx.post(f"{SHOP_API_BASE_URL}/authorizationserver/oauth/token").mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("oauth_token_response.json")),
+            )
+        )
+        respx.get(f"{SHOP_API_BASE_URL}/rest/v2/FressnapfDE/users/test%40example.com").mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("customer_response.json")),
+            )
+        )
+        respx.post(f"{AUTH_BASE_URL}/magic_link_auth").mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("invalid_magic_link_response.json")),
+            )
+        )
+
+        async with AuthClient() as auth:
+            with pytest.raises(FressnapfTrackerAuthenticationError, match="Failed to parse magic-link response"):
+                await auth.request_magic_link("test@example.com", "password")
+
+    @pytest.mark.parametrize(
+        ("fixture", "expected"),
+        [
+            ("magic_link_status_false.json", False),
+            ("magic_link_status_true.json", True),
+        ],
+    )
+    @respx.mock
+    async def test_check_magic_link_was_clicked(self, fixture: str, expected: bool):
+        """Test checking whether an email magic link has been opened."""
+        route = respx.get(f"{AUTH_BASE_URL}/magic_link_auth").mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture(fixture)),
+            )
+        )
+
+        async with AuthClient() as auth:
+            confirmed = await auth.check_magic_link_was_clicked("tracker_access_token")
+
+        assert confirmed is expected
+        assert route.calls.last.request.headers["Authorization"] == 'Token token="tracker_access_token"'
+
+    @respx.mock
+    async def test_check_magic_link_was_clicked_invalid_response(self):
+        """Test checking a magic link with an invalid API response."""
+        respx.get(f"{AUTH_BASE_URL}/magic_link_auth").mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("invalid_magic_link_status_response.json")),
+            )
+        )
+
+        async with AuthClient() as auth:
+            with pytest.raises(FressnapfTrackerAuthenticationError, match="Failed to parse magic-link status"):
+                await auth.check_magic_link_was_clicked("tracker_access_token")
+
+    @respx.mock
+    async def test_complete_magic_link(self):
+        """Test completing email authentication after opening the magic link."""
+        route = respx.patch(
+            f"{AUTH_BASE_URL}/users/update",
+            params={
+                "user_id": 12345,
+                "user_access_token": "tracker_access_token",
+            },
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("update_user_response.json")),
+            )
+        )
+
+        async with AuthClient() as auth:
+            user = await auth.complete_magic_link(12345, "tracker_access_token", "customer-123")
+
+        request = route.calls.last.request
+        assert request.headers["Authorization"] == f"Token token={CLOUD_AUTH_TOKEN}"
+        assert json.loads(request.content) == {
+            "user": {
+                "additional_parameters": {
+                    "acceptedPrivacyPolicy": True,
+                    "region": "DE",
+                    "fressnapfId": "customer-123",
+                    "acceptedNewsletter": False,
+                    "onlineShopRatingHasBeenShowed": False,
+                    "onlineShopRatingPopupLastShowedDate": None,
+                },
+                "notification_enabled": False,
+            }
+        }
+        assert user.id == 12345
+        assert user.notification_enabled is False
+        assert user.additional_parameters.fressnapf_id == "customer-123"
+        assert user.unconfirmed_email is None
+
+    @respx.mock
+    async def test_complete_magic_link_invalid_response(self):
+        """Test completing a magic link with an invalid API response."""
+        respx.patch(f"{AUTH_BASE_URL}/users/update").mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("invalid_update_user_response.json")),
+            )
+        )
+
+        async with AuthClient() as auth:
+            with pytest.raises(FressnapfTrackerAuthenticationError, match="Failed to parse updated user response"):
+                await auth.complete_magic_link(12345, "tracker_access_token", "customer-123")
+
+    @respx.mock
     async def test_request_sms_code(self):
         """Test requesting SMS code."""
-        respx.post(f"{AUTH_BASE_URL}/users/request_sms_code").mock(
+        route = respx.post(f"{AUTH_BASE_URL}/users/request_sms_code").mock(
             return_value=httpx.Response(
                 200,
                 json=json.loads(load_fixture("sms_code_response.json")),
@@ -327,6 +532,7 @@ class TestAuthentication:
             response = await auth.request_sms_code("+49123456789")
 
         assert response.id == 12345
+        assert route.calls.last.request.headers["Authorization"] == f"Bearer {CLOUD_AUTH_TOKEN}"
 
     @respx.mock
     async def test_request_sms_code_invalid_phone_number(self):
@@ -375,7 +581,7 @@ class TestAuthentication:
     @respx.mock
     async def test_get_devices(self):
         """Test getting devices list."""
-        respx.get(f"{AUTH_BASE_URL}/devices/").mock(
+        route = respx.get(f"{AUTH_BASE_URL}/devices/").mock(
             return_value=httpx.Response(
                 200,
                 json=json.loads(load_fixture("get_devices_response.json")),
@@ -385,6 +591,7 @@ class TestAuthentication:
         async with AuthClient() as auth:
             devices = await auth.get_devices(12345, "access_token")
 
+        assert route.calls.last.request.headers["Authorization"] == f"Token token={CLOUD_AUTH_TOKEN}"
         assert len(devices) == 2
         assert devices[0].serialnumber == "ABC123456"
         assert devices[0].token == "device_token_1"

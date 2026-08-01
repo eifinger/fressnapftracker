@@ -1,13 +1,14 @@
 """A module to query the Fressnapf Tracker GPS API."""
 
-from pydantic import ValidationError
-
 import asyncio
 import logging
+from collections.abc import Mapping
 from importlib import metadata
 from typing import Any, Self
+from urllib.parse import quote
 
 import httpx
+from pydantic import ValidationError
 
 from .exceptions import (
     FressnapfTrackerAuthenticationError,
@@ -20,21 +21,33 @@ from .exceptions import (
     FressnapfTrackerInvalidTrackerResponseError,
 )
 from .models import (
+    AdditionalParameters,
     Device,
+    MagicLinkResponse,
+    MagicLinkStatusResponse,
     PhoneVerificationResponse,
     SmsCodeResponse,
     Tracker,
+    TrackerUser,
 )
 
 API_HOST = "itsmybike.cloud"
 AUTH_HOST = "user.iot-pet-tracking.cloud"
 API_BASE_URL = f"https://{API_HOST}/api/pet_tracker/v2"
 AUTH_BASE_URL = f"https://{AUTH_HOST}/api/app/v1"
+SHOP_API_BASE_URL = "https://api.os.fressnapf.com"
+SHOP_SITE = "FressnapfDE"
 
-# Static cloud auth token used by the Fressnapf app
+# Static credentials used by the Fressnapf app
 CLOUD_AUTH_TOKEN = "FgvX_UJ7!BQRLU((1WhwFoOp"  # noqa: S105
+SHOP_CLIENT_ID = "fn_tracker"
+SHOP_CLIENT_SECRET = "LSfQlevg3uMAyU"  # noqa: S105
 
 LIB_VERSION = metadata.version(__package__ or "fressnapftracker")
+
+_TRACKER_APP_VERSION = "2.9.5_2"
+_TRACKER_PLATFORM_VERSION = 34
+_TRACKER_PHONE_NAME = f"fressnapftracker {LIB_VERSION}"
 
 log = logging.getLogger(__name__)
 
@@ -74,17 +87,19 @@ class _BaseClient:
         method: str,
         url: str,
         headers: dict[str, str],
-        params: dict[str, str] | None = None,
+        params: Mapping[str, str | int] | None = None,
         json_data: dict[str, Any] | None = None,
+        data: Mapping[str, str] | None = None,
     ) -> Any:
         """Make an HTTP request to the API.
 
         Args:
-            method: HTTP method (GET, POST, PUT).
+            method: HTTP method.
             url: Full URL to request.
             headers: Request headers.
             params: Optional query parameters.
             json_data: Optional JSON body data.
+            data: Optional form-encoded body data.
 
         Returns:
             The JSON response (dict or list).
@@ -104,6 +119,7 @@ class _BaseClient:
                     headers=headers,
                     params=params,
                     json=json_data,
+                    data=data,
                 ),
                 timeout=self.request_timeout,
             )
@@ -142,16 +158,187 @@ class _BaseClient:
 class AuthClient(_BaseClient):
     """Client for handling authentication with the Fressnapf Tracker API."""
 
-    def _get_auth_headers(self) -> dict[str, str]:
-        """Get headers for auth API requests."""
+    def _get_json_headers(self, authorization: str) -> dict[str, str]:
+        """Get JSON request headers with the provided authorization value."""
         return {
             "accept": "application/json",
             "accept-encoding": "gzip",
             "Connection": "keep-alive",
             "User-Agent": self.user_agent,
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {CLOUD_AUTH_TOKEN}",
+            "Authorization": authorization,
         }
+
+    def _get_auth_headers(self) -> dict[str, str]:
+        """Get headers for legacy phone authentication requests."""
+        return self._get_json_headers(f"Bearer {CLOUD_AUTH_TOKEN}")
+
+    def _get_cloud_auth_headers(self) -> dict[str, str]:
+        """Get headers authenticated with the static tracker cloud token."""
+        return self._get_json_headers(f"Token token={CLOUD_AUTH_TOKEN}")
+
+    @staticmethod
+    def _build_additional_parameters(customer_id: str) -> dict[str, Any]:
+        """Build the Fressnapf-specific user settings sent during authentication."""
+        return AdditionalParameters(
+            accepted_privacy_policy=True,
+            region="DE",
+            fressnapf_id=customer_id,
+            accepted_newsletter=False,
+            online_shop_rating_has_been_showed=False,
+            online_shop_rating_popup_last_showed_date=None,
+        ).model_dump(by_alias=True)
+
+    @staticmethod
+    def _raise_email_authentication_error(result: Any) -> None:
+        """Raise an authentication error for a recognized email-auth error response."""
+        if not isinstance(result, dict) or "error" not in result:
+            return
+
+        error = result.get("error_description") or result["error"]
+        raise FressnapfTrackerAuthenticationError(str(error))
+
+    async def _get_shop_access_token(self, email: str, password: str) -> str:
+        """Authenticate with the Fressnapf shop and return its access token."""
+        url = f"{SHOP_API_BASE_URL}/authorizationserver/oauth/token"
+        headers = {
+            "accept": "application/json",
+            "User-Agent": self.user_agent,
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        }
+        data = {
+            "grant_type": "password",
+            "username": email,
+            "password": password,
+            "client_id": SHOP_CLIENT_ID,
+            "client_secret": SHOP_CLIENT_SECRET,
+        }
+
+        result = await self._request("POST", url, headers, data=data)
+        self._raise_email_authentication_error(result)
+
+        access_token = result.get("access_token") if isinstance(result, dict) else None
+        if not isinstance(access_token, str):
+            raise FressnapfTrackerAuthenticationError("Fressnapf shop response did not contain an access token")
+        return access_token
+
+    async def _get_customer_id(self, email: str, shop_access_token: str) -> str:
+        """Get the Fressnapf customer ID associated with an email address."""
+        encoded_email = quote(email, safe="")
+        url = f"{SHOP_API_BASE_URL}/rest/v2/{SHOP_SITE}/users/{encoded_email}"
+        headers = self._get_json_headers(f"Bearer {shop_access_token}")
+
+        result = await self._request("GET", url, headers)
+        self._raise_email_authentication_error(result)
+
+        customer_id = result.get("customerId") if isinstance(result, dict) else None
+        if not isinstance(customer_id, str):
+            raise FressnapfTrackerAuthenticationError("Fressnapf shop response did not contain a customer ID")
+        return customer_id
+
+    async def request_magic_link(self, email: str, password: str, locale: str = "en") -> MagicLinkResponse:
+        """Request an email magic link for Fressnapf Tracker authentication.
+
+        Args:
+            email: Fressnapf account email address.
+            password: Fressnapf account password.
+            locale: Locale used for the magic-link email (default: "en").
+
+        Returns:
+            Magic-link response containing the tracker user and access token.
+
+        """
+        shop_access_token = await self._get_shop_access_token(email, password)
+        customer_id = await self._get_customer_id(email, shop_access_token)
+        body = {
+            "user": {
+                "email": email,
+                "locale": locale,
+                "tracker_service": "fressnapf",
+                "user_token": {
+                    "push_token": "",
+                    "app_version": _TRACKER_APP_VERSION,
+                    "app_platform": "android",
+                    "platform_version": _TRACKER_PLATFORM_VERSION,
+                    "phone_name": _TRACKER_PHONE_NAME,
+                },
+                "additional_parameters": self._build_additional_parameters(customer_id),
+            }
+        }
+
+        result = await self._request(
+            "POST",
+            f"{AUTH_BASE_URL}/magic_link_auth",
+            self._get_cloud_auth_headers(),
+            json_data=body,
+        )
+        self._raise_email_authentication_error(result)
+        try:
+            return MagicLinkResponse.model_validate(result)
+        except ValidationError as exception:
+            raise FressnapfTrackerAuthenticationError("Failed to parse magic-link response") from exception
+
+    async def check_magic_link_was_clicked(self, user_access_token: str) -> bool:
+        """Check once whether the requested email magic link has been opened.
+
+        Args:
+            user_access_token: Access token returned by request_magic_link.
+
+        Returns:
+            True when the magic link has been opened, otherwise False.
+
+        """
+        headers = self._get_json_headers(f'Token token="{user_access_token}"')
+        result = await self._request(
+            "GET",
+            f"{AUTH_BASE_URL}/magic_link_auth",
+            headers,
+        )
+        self._raise_email_authentication_error(result)
+        try:
+            return MagicLinkStatusResponse.model_validate(result).user_token.token_valid
+        except ValidationError as exception:
+            raise FressnapfTrackerAuthenticationError("Failed to parse magic-link status response") from exception
+
+    async def complete_magic_link(
+        self,
+        user_id: int,
+        user_access_token: str,
+        customer_id: str,
+    ) -> TrackerUser:
+        """Complete email authentication after the magic link has been opened.
+
+        Args:
+            user_id: User ID returned by request_magic_link.
+            user_access_token: Access token returned by request_magic_link.
+            customer_id: Fressnapf customer ID returned in the user's additional parameters.
+
+        Returns:
+            Updated Fressnapf Tracker user.
+
+        """
+        params: dict[str, str | int] = {
+            "user_id": user_id,
+            "user_access_token": user_access_token,
+        }
+        body = {
+            "user": {
+                "additional_parameters": self._build_additional_parameters(customer_id),
+                "notification_enabled": False,
+            }
+        }
+        result = await self._request(
+            "PATCH",
+            f"{AUTH_BASE_URL}/users/update",
+            self._get_cloud_auth_headers(),
+            params=params,
+            json_data=body,
+        )
+        self._raise_email_authentication_error(result)
+        try:
+            return TrackerUser.model_validate(result)
+        except ValidationError as exception:
+            raise FressnapfTrackerAuthenticationError("Failed to parse updated user response") from exception
 
     async def request_sms_code(self, phone_number: str, locale: str = "en") -> SmsCodeResponse:
         """Request an SMS verification code.
@@ -233,8 +420,8 @@ class AuthClient(_BaseClient):
 
         """
         url = f"{AUTH_BASE_URL}/devices/"
-        headers = self._get_auth_headers()
-        params = {
+        headers = self._get_cloud_auth_headers()
+        params: dict[str, str | int] = {
             "user_id": user_id,
             "user_access_token": user_access_token,
         }

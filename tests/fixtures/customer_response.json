@@ -1,0 +1,6 @@
+{
+  "type": "userWsDTO",
+  "customerId": "customer-123",
+  "isStoreEditor": false,
+  "paybackAccountConnected": false
+}

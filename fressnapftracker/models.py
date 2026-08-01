@@ -1,6 +1,6 @@
 """Fressnapf Tracker API models."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Position(BaseModel):
@@ -149,6 +149,60 @@ class Device(BaseModel):
 
     serialnumber: str
     token: str
+
+
+class AdditionalParameters(BaseModel):
+    """Additional Fressnapf user settings."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    accepted_privacy_policy: bool = Field(alias="acceptedPrivacyPolicy")
+    region: str
+    fressnapf_id: str = Field(alias="fressnapfId")
+    accepted_newsletter: bool = Field(alias="acceptedNewsletter")
+    online_shop_rating_has_been_showed: bool = Field(alias="onlineShopRatingHasBeenShowed")
+    online_shop_rating_popup_last_showed_date: str | None = Field(alias="onlineShopRatingPopupLastShowedDate")
+
+
+class TrackerUser(BaseModel):
+    """Fressnapf Tracker user information."""
+
+    id: int
+    email: str
+    phone: str | None = None
+    notification_enabled: bool
+    locale: str
+    additional_parameters: AdditionalParameters
+    migrated_to_pet_user_layer_at: str | None = None
+    app_staging_allowed: bool
+    tracker_service: str
+    unconfirmed_email: str | None = None
+
+
+class MagicLinkUserToken(BaseModel):
+    """Token returned when a magic link is requested."""
+
+    access_token: str
+    token_valid: bool
+
+
+class MagicLinkResponse(BaseModel):
+    """Response from requesting an email authentication magic link."""
+
+    user: TrackerUser
+    user_token: MagicLinkUserToken
+
+
+class MagicLinkStatusToken(BaseModel):
+    """Magic-link confirmation status."""
+
+    token_valid: bool
+
+
+class MagicLinkStatusResponse(BaseModel):
+    """Response from checking a magic link."""
+
+    user_token: MagicLinkStatusToken
 
 
 class UserToken(BaseModel):
