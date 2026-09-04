@@ -384,7 +384,7 @@ class TestAuthentication:
         }
         assert response.user.id == 12345
         assert response.user.email == "test@example.com"
-        assert response.user.additional_parameters.fressnapf_id == "customer-123"
+        assert response.customer_id == "customer-123"
         assert response.user_token.access_token == "tracker_access_token"
         assert response.user_token.token_valid is False
 

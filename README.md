@@ -31,7 +31,7 @@ async def main() -> None:
         response = await auth.request_magic_link("<EMAIL>", "<PASSWORD>")
         user_id = response.user.id
         access_token = response.user_token.access_token
-        customer_id = response.user.additional_parameters.fressnapf_id
+        customer_id = response.customer_id
 
         # Step 2: Open the link in the email, then check its status
         input("Open the sign-in link, then press Enter: ")
@@ -166,8 +166,9 @@ Client for interacting with the Fressnapf Tracker device API.
 
 #### MagicLinkResponse
 
-- `user`: Authenticated user information, including the user and Fressnapf customer IDs
+- `user`: Tracker user ID and Fressnapf account email address
 - `user_token`: Access token and current magic-link confirmation status
+- `customer_id`: Fressnapf customer ID needed to complete authentication
 
 #### TrackerUser
 
