@@ -274,8 +274,8 @@ class AuthClient(_BaseClient):
         )
         self._raise_email_authentication_error(result)
         try:
-            return MagicLinkResponse.model_validate(result)
-        except ValidationError as exception:
+            return MagicLinkResponse.model_validate({**result, "customer_id": customer_id})
+        except (TypeError, ValidationError) as exception:
             raise FressnapfTrackerAuthenticationError("Failed to parse magic-link response") from exception
 
     async def check_magic_link_was_clicked(self, user_access_token: str) -> bool:
@@ -311,7 +311,7 @@ class AuthClient(_BaseClient):
         Args:
             user_id: User ID returned by request_magic_link.
             user_access_token: Access token returned by request_magic_link.
-            customer_id: Fressnapf customer ID returned in the user's additional parameters.
+            customer_id: Fressnapf customer ID returned by request_magic_link.
 
         Returns:
             Updated Fressnapf Tracker user.

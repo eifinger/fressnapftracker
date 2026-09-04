@@ -1,21 +1,7 @@
 {
   "user": {
     "id": 12345,
-    "email": "test@example.com",
-    "phone": null,
-    "notification_enabled": true,
-    "locale": "en",
-    "additional_parameters": {
-      "acceptedPrivacyPolicy": true,
-      "region": "DE",
-      "fressnapfId": "customer-123",
-      "acceptedNewsletter": false,
-      "onlineShopRatingHasBeenShowed": false,
-      "onlineShopRatingPopupLastShowedDate": null
-    },
-    "migrated_to_pet_user_layer_at": null,
-    "app_staging_allowed": false,
-    "tracker_service": "fressnapf"
+    "email": "test@example.com"
   },
   "user_token": {
     "access_token": "tracker_access_token",

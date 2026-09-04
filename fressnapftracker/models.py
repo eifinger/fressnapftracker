@@ -179,6 +179,13 @@ class TrackerUser(BaseModel):
     unconfirmed_email: str | None = None
 
 
+class MagicLinkUser(BaseModel):
+    """User information returned when a magic link is requested."""
+
+    id: int
+    email: str
+
+
 class MagicLinkUserToken(BaseModel):
     """Token returned when a magic link is requested."""
 
@@ -189,8 +196,9 @@ class MagicLinkUserToken(BaseModel):
 class MagicLinkResponse(BaseModel):
     """Response from requesting an email authentication magic link."""
 
-    user: TrackerUser
+    user: MagicLinkUser
     user_token: MagicLinkUserToken
+    customer_id: str
 
 
 class MagicLinkStatusToken(BaseModel):
