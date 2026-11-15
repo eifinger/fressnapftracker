@@ -563,6 +563,15 @@ class ApiClient(_BaseClient):
         """
         await self._device_request("PUT", "/change_deep_sleep", {"value": int(enabled)})
 
+    async def enable_live_tracking(self) -> None:
+        """Start live tracking of the tracker.
+
+        While live tracking is active the tracker reports its position about every 20 seconds.
+        The API ends it on its own after 10 minutes, so call this method again to keep it running.
+
+        """
+        await self._device_request("PUT", "/enable_live_tracking/")
+
     async def set_energy_saving(self, enabled: bool) -> None:
         """Set the energy saving mode of the tracker.
 
