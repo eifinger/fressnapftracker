@@ -151,6 +151,7 @@ Client for interacting with the Fressnapf Tracker device API.
 - `get_tracker()` -> `Tracker`: Get current tracker data
 - `set_led_brightness(brightness: int)`: Set LED brightness (0-100)
 - `set_deep_sleep(enabled: bool)`: Enable/disable deep sleep mode
+- `enable_live_tracking()`: Start live tracking (about one position every 20 seconds for 10 minutes; call again to renew)
 
 ### Models
 
