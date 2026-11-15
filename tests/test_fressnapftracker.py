@@ -319,6 +319,51 @@ class TestSetEnergySaving:
             await api.set_energy_saving(False)
 
 
+class TestEnableLiveTracking:
+    """Tests for enable_live_tracking method."""
+
+    @respx.mock
+    async def test_enable_live_tracking(self, serial_number: str, device_token: str):
+        """Test starting live tracking."""
+        route = respx.put(
+            f"{API_BASE_URL}/devices/{serial_number}/enable_live_tracking/",
+            params={"devicetoken": device_token},
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("enable_live_tracking_response.json")),
+            )
+        )
+
+        async with ApiClient(
+            serial_number=serial_number,
+            device_token=device_token,
+        ) as api:
+            await api.enable_live_tracking()
+
+        assert route.called
+
+    @respx.mock
+    async def test_enable_live_tracking_invalid_device_token(self, serial_number: str, device_token: str):
+        """Test live tracking raises an error for an invalid device token."""
+        respx.put(
+            f"{API_BASE_URL}/devices/{serial_number}/enable_live_tracking/",
+            params={"devicetoken": device_token},
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                json=json.loads(load_fixture("error_invalid_devicetoken.json")),
+            )
+        )
+
+        async with ApiClient(
+            serial_number=serial_number,
+            device_token=device_token,
+        ) as api:
+            with pytest.raises(FressnapfTrackerInvalidDeviceTokenError):
+                await api.enable_live_tracking()
+
+
 class TestAuthentication:
     """Tests for authentication methods."""
 
